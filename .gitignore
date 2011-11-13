@@ -1,0 +1,9 @@
+*.bak
+*.img
+*.fd
+*.o
+*.so
+*.exe
+*.zip
+*.bin
+*.out
