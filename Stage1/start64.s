@@ -11,7 +11,8 @@ start64:
       rep    stosq
 
       movl   $0x10000, %esp
-      call   lsc_main
+      call   vesa_modes_main
+#      call   lsc_main
       
 1:    hlt
       jmp 1b

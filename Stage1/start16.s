@@ -61,31 +61,31 @@ iterate_video_modes:
       
 check_video_mode:
       
-      cmpw  $8   , 24(%di)
+      cmpb  $8   , 25(%di)
       je    valid_video_mode
-#      cmpw  $16  , (bpp)
-#      je    valid_color_mode
+      cmpw  $16  , 25(%di)
+      je    valid_color_mode
       jmp   next_video_mode
       
-#valid_color_mode:
+valid_color_mode:
       
-#      cmpw  $640 , (h_res)
-#      je    valid_hres_mode
-#      cmpw  $800 , (h_res)
-#      je    valid_hres_mode
-#      cmpw  $1024, (h_res)
-#      je    valid_hres_mode
-#      jmp   next_video_mode
+      cmpw  $640 , 18(%di)
+      je    valid_hres_mode
+      cmpw  $800 , 18(%di)
+      je    valid_hres_mode
+      cmpw  $1024, 18(%di)
+      je    valid_hres_mode
+      jmp   next_video_mode
         
-#valid_hres_mode:
+valid_hres_mode:
 
-#      cmpw  $480, (v_res)
-#      je    valid_video_mode
-#      cmpw  $600, (v_res)
-#      je    valid_video_mode
-#      cmpw  $768, (v_res)
-#      je    valid_video_mode
-#      jmp   next_video_mode
+      cmpw  $480, 20(%di)
+      je    valid_video_mode
+      cmpw  $600, 20(%di)
+      je    valid_video_mode
+      cmpw  $768, 20(%di)
+      je    valid_video_mode
+      jmp   next_video_mode
       
       ##  
       ##  TODO : Move the structure to one of the spaces
@@ -125,7 +125,7 @@ valid_video_mode:
 next_video_mode:
 
       addw  $2  , %si
-      cmpw  $24 , %dx
+      cmpw  $6 , %dx
       je    end_of_iterate_video_modes
       jmp   iterate_video_modes
       
