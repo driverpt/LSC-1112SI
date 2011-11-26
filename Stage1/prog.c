@@ -40,23 +40,23 @@ void clear_screen() {
 }
 
 char* itoa( int val ){
-  static char buf[32];
-  int i = 30, j, base = 10;
-  for(; val != 0; --i, val /= base) {
-      buf[i] = "0123456789"[val % base];
-  }
-  for( j = 0; buf[++i] != 0; ++j ) {
-      tempString[j] = buf[i];
-  }
-  tempString[j] = 0;
-  return tempString;
+    static char buf[32];
+    int i = 30, j, base = 10;
+    for(; val != 0; --i, val /= base) {
+        buf[i] = "0123456789"[val % base];
+    }
+    for( j = 0; buf[++i] != 0; ++j ) {
+        tempString[j] = buf[i];
+    }
+    tempString[j] = 0;
+    return tempString;
 }
 
 
 int strlen( const char * characters ) {
-  int count = 0;
-  for( ; characters[count] != 0; ++count );
-  return count;
+    int count = 0;
+    for( ; characters[count] != 0; ++count );
+    return count;
 }
 
 void printXY( unsigned y, unsigned x, const char * string ) {

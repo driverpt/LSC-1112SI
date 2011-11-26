@@ -3,7 +3,8 @@
       # http://wiki.osdev.org/Entering_Long_Mode_Directly
 
       .equ   START16_SEG, 0x1000
-
+      .equ   COUNTER_0  , 0x40
+      .equ   TIMER_CTRL , 0x43
       .text
       .code16
 start16:
@@ -130,9 +131,6 @@ next_video_mode:
       jmp   iterate_video_modes
       
 end_of_iterate_video_modes:
-      
-######################
-######################
 
       # Build page tables
 
