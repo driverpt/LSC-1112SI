@@ -248,15 +248,10 @@ vesa_mode_info:
   offscreen_ptr:  .long  0
   offscreen_size: .word  0
                   .space 206
-                  
-.global vbe_info
-vbe_info:
-  vbe_id:         .byte 0
-  vbe_hres:       .word 0
-  vbe_vres:       .word 0
-                  
+              
+
 .global vbe_modes
 vbe_modes:
-  .space 24*256
+  .space 6*256
        
       .end
