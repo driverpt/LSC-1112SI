@@ -3,8 +3,7 @@
       # http://wiki.osdev.org/Entering_Long_Mode_Directly
 
       .equ   START16_SEG, 0x1000
-      .equ   COUNTER_0  , 0x40
-      .equ   TIMER_CTRL , 0x43
+      .equ   MAX_MODES  , 6
       .text
       .code16
 start16:
@@ -27,6 +26,8 @@ start16:
       andb   $0xfe, %al
       outb   %al, $0x92
 
+      jmp end_of_iterate_video_modes
+  
 ######################
 ### ADD VESA INFO ####
 ######################
@@ -125,8 +126,8 @@ valid_video_mode:
       
 next_video_mode:
 
-      addw  $2  , %si
-      cmpw  $6 , %dx
+      addw  $2         , %si
+      cmpw  $MAX_MODES , %dx
       je    end_of_iterate_video_modes
       jmp   iterate_video_modes
       
@@ -250,6 +251,6 @@ vesa_mode_info:
 
 .global vbe_modes
 vbe_modes:
-  .space 6*256
+  .space MAX_MODES*256
        
       .end

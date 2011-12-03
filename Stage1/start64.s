@@ -1,4 +1,6 @@
 
+      .equ   COUNTER_0  , 0x40
+      .equ   TIMER_CTRL , 0x43
       .text
       .code64
       .global start64
@@ -21,16 +23,16 @@ start64:
 
 # Fazer Polling ao contador, quando o valor do contador for superior ao último valor medido
 # significa que passaram 10 ms.
+# Valor colocado no contador é 11932, ou seja (1/Frequencia)/10ms
 configure_timer:
       movb   $0x34 , %al
       out    %al   , $TIMER_CTRL
       
-      out    $0    , $COUNTER_O
-      out    $0    , $COUNTER_O
+      movb   $0x9C , %al
+      out    %al   , $COUNTER_0
+      movb   $0x2E , %al
+      out    %al   , $COUNTER_0
       
-      
-      movb   
-
 ######################
 ######################      
       
