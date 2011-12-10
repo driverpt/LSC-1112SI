@@ -24,7 +24,12 @@ static char tempString[200];
 PCScreen * const screen = ( PCScreen* ) 0xb8000;
 
 extern char vbe_modes[];
-struct vesa_mode_info * const modes = ( struct vesa_mode_info * ) ( vbe_modes + 0x10000 );
+
+extern char vesa_info_struct[];
+extern char vesa_mode_info_struct[];
+
+struct vesa_general_info * const vesa = ( struct vesa_general_info * ) ( vesa_info_struct      + 0x10000 );
+struct vesa_mode_info    * const mode = ( struct vesa_mode_info    * ) ( vesa_mode_info_struct + 0x10000 );
 
 #define SCREEN ( *screen )
 
@@ -84,7 +89,7 @@ void clearArea( unsigned y, unsigned x, int length ) {
         SCREEN[y][x + totalArea].fgcolor   = LGRAY;
         SCREEN[y][x + totalArea].bgcolor   = BLACK;
         SCREEN[y][x + totalArea].blink     = 0;
-        SCREEN[y][x + totalArea].value = ' ';      
+        SCREEN[y][x + totalArea].value     = ' ';      
     }
 }
 
@@ -140,8 +145,10 @@ void count() {
 void vesa_modes_main() {
     unsigned i;
     clear_screen();
-    
-    count();
+    printXYHexa( 1, 0, mode->bpp );
+    printXYHexa( 1, 4, mode->h_res );
+    printXYHexa( 1, 10, mode->v_res );
+    //count();
     
 /*    for( i = 0; i < MAX_MODES; ++i ) {
        printXYHexa( 12 + i, 36, modes[i].bpp );

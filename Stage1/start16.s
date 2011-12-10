@@ -26,13 +26,13 @@ start16:
       andb   $0xfe, %al
       outb   %al, $0x92
 
-      jmp end_of_iterate_video_modes
+      ## jmp end_of_iterate_video_modes
   
 ######################
 ### ADD VESA INFO ####
 ######################
       
-      movw  $vesa_info          , %di
+      movw  $vesa_info_struct          , %di
       movw  %ds                 , %bx    # Lets put DS into ES, since VESA uses ES:DI
       movw  %bx                 , %es    # We need to use an intermediary register
       movw  $0x4F00             , %ax    # Put the Interruption Code in AX register
@@ -43,13 +43,12 @@ start16:
       
       
 iterate_video_modes_start:
-      movw  %ds                 , %bx
-      movw  %bx                 , %es    # Since it works with ES:DI, lets put the vesa_mode_info structure      
-      movw  $vbe_modes          , %di    # down below as the buffer pointer
-      xorw  %dx                 , %dx
+      movw  %ds                    , %bx
+      movw  %bx                    , %es    # Since it works with ES:DI, lets put the vesa_mode_info_struct structure      
+      movw  $vesa_mode_info_struct , %di    # down below as the buffer pointer
       
 iterate_video_modes:
-      movw  %fs:(%si)           , %cx   # Set the FS and DI to the video mode PTR inside vesa_mode_info
+      movw  %fs:(%si)           , %cx   # Set the FS and DI to the video mode PTR inside vesa_mode_info_struct
       cmpw  $0xFFFF             , %cx   # Lets see if the mode is FF FF which means end of modes array
       je    end_of_iterate_video_modes   
       
@@ -63,75 +62,36 @@ iterate_video_modes:
       
 check_video_mode:
       
-      cmpb  $8   , 25(%di)
-      je    valid_video_mode
-      cmpw  $16  , 25(%di)
+      cmpb  $16  , (bpp)
       je    valid_color_mode
       jmp   next_video_mode
       
 valid_color_mode:
       
-      cmpw  $640 , 18(%di)
-      je    valid_hres_mode
-      cmpw  $800 , 18(%di)
-      je    valid_hres_mode
-      cmpw  $1024, 18(%di)
+      cmpw  $800 , (h_res)
       je    valid_hres_mode
       jmp   next_video_mode
         
 valid_hres_mode:
 
-      cmpw  $480, 20(%di)
-      je    valid_video_mode
-      cmpw  $600, 20(%di)
-      je    valid_video_mode
-      cmpw  $768, 20(%di)
-      je    valid_video_mode
+      cmpw  $600 , (v_res)
+      je    end_of_iterate_video_modes
       jmp   next_video_mode
       
       ##  
       ##  TODO : Move the structure to one of the spaces
-      ##    
-
-valid_video_mode:
-
-#mem_cpy_start:
-      #movw  $256, %cx
-      #pushw %ds
-      #pushw %si
-      
-      #pushw %es
-      #pushw %di      
-#mem_cpy:
-
-      #movw  $vesa_mode_info   , %bx
-      #movw  %bx               , %es
-      #xorw  %di               , %di
-      
-      #movw  $256*%dx+vbe_modes, %bx 
-      #movw  %bx               , %ds
-      #xorw  %si               , %si
-      
-      #cld
-
-      #rep   movsb
-      
-      #popw  %di
-      #popw  %es
-      #popw  %si
-      #popw  %ds
-      
-      incw  %dx
-      addw  $256, %di
+      ##  
       
 next_video_mode:
-
-      addw  $2         , %si
-      cmpw  $MAX_MODES , %dx
-      je    end_of_iterate_video_modes
+      addw  $2,   %si
       jmp   iterate_video_modes
       
 end_of_iterate_video_modes:
+      
+      movw  $0x4F02, %ax
+      movw  %fs:(%si)   , %bx
+      orw   $0x4000, %bx
+      int   $0x10
 
       # Build page tables
 
@@ -199,8 +159,8 @@ gdt_ptr:
       
 .data
   
-.global vesa_info
-vesa_info:
+.global vesa_info_struct
+vesa_info_struct:
   signature:      .ascii "VBE2"
   version:        .word  0
   vendor_string:  .word  0
@@ -211,8 +171,8 @@ vesa_info:
   total_memory:   .word  0
                   .space 748
 
-.global vesa_mode_info
-vesa_mode_info:
+.global vesa_mode_info_struct
+vesa_mode_info_struct:
   mode_attr:      .word  0
   win_attr:       .byte  0
                   .byte  0
@@ -247,10 +207,5 @@ vesa_mode_info:
   offscreen_ptr:  .long  0
   offscreen_size: .word  0
                   .space 206
-              
-
-.global vbe_modes
-vbe_modes:
-  .space MAX_MODES*256
-       
+               
       .end
