@@ -88,9 +88,9 @@ next_video_mode:
       
 end_of_iterate_video_modes:
       
-      movw  $0x4F02, %ax
-      movw  %fs:(%si)   , %bx
-      orw   $0x4000, %bx
+      movw  $0x4F02   , %ax
+      movw  %fs:(%si) , %bx
+      orw   $0x4000   , %bx
       int   $0x10
 
       # Build page tables
@@ -98,22 +98,25 @@ end_of_iterate_video_modes:
       xorw   %bx, %bx
       movw   %bx, %es
       cld
-      movw   $0xa000, %di
-
+      movw   $0xa000, %di   
+      
+      ### PML 4
       movw   $0xb00f, %ax
       stosw
 
       xorw   %ax, %ax
       movw   $0x07ff, %cx
       rep    stosw
-
+      
+      ### PDP
       movw   $0xc00f, %ax
       stosw
 
       xorw   %ax, %ax
       movw   $0x07ff, %cx
       rep    stosw
-
+     
+      ### PD
       movw   $0x018f, %ax
       stosw
 

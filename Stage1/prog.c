@@ -11,17 +11,16 @@ typedef enum {
 } Color;
 
 typedef struct {
-    unsigned value   : 8;
-    unsigned fgcolor : 4;
-    unsigned bgcolor : 3;
-    unsigned blink   : 1;
-} __attribute__((packed)) CharCell;
+    unsigned b : 5;
+    unsigned g : 6;
+    unsigned r : 5;
+} __attribute__((packed)) PixelCell;
 
-typedef CharCell PCScreen[25][80];
+typedef PixelCell PCScreen[600][800];
 
 static char tempString[200];
 
-PCScreen * const screen = ( PCScreen* ) 0xb8000;
+PCScreen * screen = ( PCScreen* ) mode->lfb_ptr;
 
 extern char vbe_modes[];
 
@@ -34,6 +33,10 @@ struct vesa_mode_info    * const mode = ( struct vesa_mode_info    * ) ( vesa_mo
 #define SCREEN ( *screen )
 
 extern unsigned char bootdrv;
+
+void init_screen() {
+  screen = ( PCScreen* ) mode->lfb_ptr;
+}
 
 void clear_screen() {
     unsigned x, y, i;
