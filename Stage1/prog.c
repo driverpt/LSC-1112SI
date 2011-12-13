@@ -108,7 +108,7 @@ u16 getCounter() {
   u8  higher;
   u16 counter;
   
-  outb( TIMER_CTRL, 0 );
+  outb( 0, TIMER_CTRL );
   
   lower  = inb( COUNTER_0 );
   higher = inb( COUNTER_0 );
