@@ -79,6 +79,23 @@ int strlen( const char * characters ) {
     return count;
 }
 
+u16 getCounter() {
+  u8  lower;
+  u8  higher;
+  u16 counter;
+  
+  outb( 0, TIMER_CTRL );
+  
+  lower  = inb( COUNTER_0 );
+  higher = inb( COUNTER_0 );
+  
+  counter = higher;
+  counter = counter << 8;
+  counter = counter | lower;
+  
+  return counter;
+}
+
 void lsc_main() {
     fill_screen( 0, 255, 0 );
 }
