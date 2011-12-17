@@ -117,13 +117,34 @@ end_of_iterate_video_modes:
       rep    stosw
      
       ### PD
-      movw   $0x018f, %ax
-      stosw
-
-      xorw   %ax, %ax
-      movw   $0x07ff, %cx
-      rep    stosw
-
+      movl   $0x0000018f, %eax
+      stosl                         # First Page Directory Entry will map to Physical Address 0
+      
+      xorl   %eax, %eax
+      stosl
+      
+      # Fill another Page Directory Entry with Memory
+      movl   $0x0020018f, %eax
+      stosl                         # First Page Directory Entry will map to Physical Address 0
+      
+      xorl   %eax, %eax
+      stosl
+      
+      # Lets put the pointer in the last entry
+      xorl   %eax    , %eax
+      movl   $1018   , %ecx
+      rep    stosl
+      
+      # Lets fill the last Entry with the Linear Frame Buffer Address
+      movl   lfb_ptr    , %eax
+      andl   $0xFFE00000, %eax  # Invalidade First Pages
+      orl    $0x0000018f, %eax
+      stosl
+      
+      xorl   %eax    , %eax
+      stosl
+      
+      
       # Enter long mode
 
       cli                       # No IDT. Keep interrupts disabled.
