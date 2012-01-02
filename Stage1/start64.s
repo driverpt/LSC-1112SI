@@ -14,10 +14,6 @@ start64:
 
       movl   $0x10000, %esp
 
-##########################
-### TODO: Timer Clock ####
-##########################
-
 # Calcular o valor que com a frequência ( ver enunciado ) dá 10ms, que é valor
 # ideal de acerto.
 
@@ -36,8 +32,8 @@ configure_timer:
 ######################
 ######################      
       
-      call   vesa_modes_main
-#      call   lsc_main
+#      call   vesa_modes_main
+      call   lsc_main
       
 1:    hlt
       jmp 1b
