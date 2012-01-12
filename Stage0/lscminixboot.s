@@ -84,7 +84,37 @@ set_inode_done:
       movw   $64             , %cx
       cld
       rep movsb
-      movl   (i_mode)        , %eax
+      xorl   %esi            , %esi
+      movw   i_zone1         , %si
+      xorl   %ecx            , %ecx
+      movl   $8              , %ecx
+      xorl   %ebx            , %ebx
+      movw   $MEM_BUFFER     , %bx
+load_mem:
+      movl   (%esi)          , %eax
+      orl    %eax            , %eax
+      jz     jump_mem
+      
+      shlw   $1              , %ax
+      
+      movb   $16             , (dap)
+      movb   $0              , (dap_reserved)
+      movw   $2              , (dap_sectors)
+      movw   $ebx            , (dap_offset)
+      movw   $0              , (dap_segment)
+      movl   $0              , (dap_lba_address+4)
+      movl   %eax            , (dap_lba_address)
+      int    $0x13     
+      jc     PrintError
+      
+      addl   $4              , %esi
+      decw   %cx
+      jnz    load_mem
+      
+jump_mem:
+      ljmp   $0, $0x10000
+      
+      
       jmp    stop
     
 ReadDirectoryNextEntry:
