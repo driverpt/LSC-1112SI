@@ -70,21 +70,21 @@ ReadDirectory:
       jc     PrintError
       movw   $msgloaded      , %si
       call   PrintInfo
+      xorl   %esi            , %esi
       movw   $LSC_SYS_INODE  , %si
       movw   %bx             , %cx
 set_inode:
       orw    %cx             , %cx
       jz     set_inode_done
-      addw   $64             , %si
+      addw   $0x40           , %si
       decw   %cx
       jmp    set_inode
 set_inode_done:
-      movw   inode           , %di
+      movw   $inode          , %di
       movw   $64             , %cx
       cld
       rep movsb
       movl   (i_mode)        , %eax
-      
       jmp    stop
     
 ReadDirectoryNextEntry:
