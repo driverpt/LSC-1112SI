@@ -6,6 +6,7 @@
 .equ INODE_SIZE         , 0x0040            # INode Size
 .equ LSC_SYS_INODE      , 0x8000            # LSC.SYS INODE OFFSET  (ROOT_DIR + 1024)
 .equ LSC_SYS_STRING_SIZE, 8                 # LSC.SYS String Size
+.equ PARTITION_BASE_ADDR, 43344
 .equ BASE_DIR_LBA       , 45150
 .equ INODE_LBA_START    , 43364
 
@@ -31,8 +32,8 @@ main_prog:
       movb  driveid     , %dl
       int   $0x13
       jc    PrintError
-      movw  $msgb       , %si
-      call  PrintInfo
+      #movw  $msgb       , %si
+      #call  PrintInfo
       movw  $ROOT_DIR   , %di
 
 ReadDirectoryInit:  
@@ -68,8 +69,8 @@ ReadDirectory:
       movl   $INODE_LBA_START, (dap_lba_address)
       int    $0x13
       jc     PrintError
-      movw   $msgloaded      , %si
-      call   PrintInfo
+      #movw   $msgloaded      , %si
+      #call   PrintInfo
       xorl   %esi            , %esi
       movw   $LSC_SYS_INODE  , %si
       movw   %bx             , %cx
@@ -85,46 +86,51 @@ set_inode_done:
       cld
       rep movsb
       xorl   %esi            , %esi
-      movw   i_zone1         , %si
+      movw   $i_zone1        , %si
       xorl   %ecx            , %ecx
       movl   $8              , %ecx
       xorl   %ebx            , %ebx
-      movw   $MEM_BUFFER     , %bx
+      movw   $0              , %bx
 load_mem:
       movl   (%esi)          , %eax
       orl    %eax            , %eax
       jz     jump_mem
       
-      shlw   $1              , %ax
+      shll   $1              , %eax
+      addl   $PARTITION_BASE_ADDR, %eax
       
       movb   $16             , (dap)
       movb   $0              , (dap_reserved)
-      movw   $2              , (dap_sectors)
-      movw   $ebx            , (dap_offset)
-      movw   $0              , (dap_segment)
+      movw   %bx             , (dap_offset)
+      movw   $0x1            , (dap_segment)
       movl   $0              , (dap_lba_address+4)
       movl   %eax            , (dap_lba_address)
       int    $0x13     
       jc     PrintError
-      
       addl   $4              , %esi
+      addw   $512            , %bx
       decw   %cx
       jnz    load_mem
-      
 jump_mem:
-      ljmp   $0, $0x10000
+      movw   $0x10, %ax
+      movw   %ax  , %ds
+      movw   %ax  , %es
+      movw   %ax  , %fs
+      movw   %ax  , %gs
+      movw   %ax  , %ss
       
-      
-      jmp    stop
-    
+      ljmp $MEM_BUFFER, $0
+
 ReadDirectoryNextEntry:
-      movw   %dx  , %si
-      call   PrintInfo
+#      movw   %dx  , %si
+#      call   PrintInfo
       movw   %bx  , %di
       addw   $0x20, %di
       decw   %cx
-      jz     sys_not_found
-      jmp    ReadDirectory
+      jnz    ReadDirectory
+      movw   $msgnotfound, %si
+      call   PrintInfo
+      jmp    stop
        
 PrintError:
       pushw  %si
@@ -136,12 +142,10 @@ PrintError:
 PrintInfo:
       lodsb                         # load next byte from string from SI to AL
       orb    %al, %al               # Does AL=0?
-      jz     PrintDone              # Yep, null terminator found-bail out
+      jz     FunctionComplete       # Yep, null terminator found-bail out
       movb   $0x0E, %ah             # Nope-Print the character
       int    $0x10
       jmp    PrintInfo              # Repeat until null terminator found
-PrintDone:
-      ret
 
 StringCompare:
       movw   $LSC_SYS_STRING_SIZE, %cx
@@ -153,24 +157,12 @@ StringCompare:
 
 StringFound:
       movw   $msgloadingsys, %si
-      movw   $0            , %ax
-      pushw  %ax
       call   PrintInfo
-      popw   %ax
+      xorw   %ax           , %ax
       jmp    FunctionComplete
   
 FunctionComplete:
       ret
-    
-# ... term ...                 # end of execution...
-
-init_vga:
-    mov %es, 0xB800              # INode Number * 64
-
-sys_not_found:
-    movw  $msgnotfound, %si
-    call  PrintInfo
-    jmp   stop
 
 stop:
     hlt
@@ -186,8 +178,8 @@ msgerror:   .ascii "Error while loading LSC..."
 msgnotfound:  .ascii "LSC.SYS Not Found"
               .byte  13, 10, 0    
 
-msgloaded:  .ascii "LSC.SYS Found"
-            .byte  13, 10, 0              
+#msgloaded:  .ascii "LSC.SYS Found"
+#            .byte  13, 10, 0              
 
 msgloadingsys:  .ascii "Loading lsc.sys"
                 .byte  13, 10, 0              
@@ -242,8 +234,8 @@ inode:
     i_zone5:    .long  0
     i_zone6:    .long  0
     i_zone7:    .long  0
-    i_zone8:    .long  0
-    i_zone9:    .long  0
-    i_zone10:   .long  0
+#    i_zone8:    .long  0
+#    i_zone9:    .long  0
+#    i_zone10:   .long  0
     
 .end
