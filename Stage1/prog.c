@@ -10,6 +10,9 @@
 #define VGA_HEIGHT    800
 #define VGA_WIDTH     600
 
+#define TRUE          1
+#define FALSE         0
+
 typedef enum {
     BLACK, DBLUE, DGREEN, DCYAN, DRED, DMAGENTA, BROWN,  LGRAY,
     DGRAY, LBLUE, LGREEN, LCYAN, LRED, LMAGENTA, YELLOW, WHITE
@@ -39,28 +42,6 @@ struct vesa_mode_info    * const mode = ( struct vesa_mode_info    * ) ( vesa_mo
 
 extern unsigned char bootdrv;
 
-/*void clear_screen() {
-    unsigned x, y;
-    for (y = 0; y < VGA_WIDTH; ++y) {
-        for (x = 0; x < VGA_HEIGHT; ++x) {
-            SCREEN[y][x].r = 0;
-            SCREEN[y][x].g = 0;
-            SCREEN[y][x].b = 0;
-        }
-    }  
-}
-
-void fill_screen( unsigned r, unsigned g, unsigned b ) {
-    unsigned x, y;
-    for (y = 0; y < VGA_WIDTH; ++y) {
-        for (x = 0; x < VGA_HEIGHT; ++x) {
-            SCREEN[y][x].r = r;
-            SCREEN[y][x].g = g;
-            SCREEN[y][x].b = b;
-        }
-    }  
-}
-*/
 char* itoa( int val ){
     static char buf[32];
     int i = 30, j, base = 10;
@@ -97,61 +78,87 @@ u16 getCounter() {
   return counter;
 }
 
+void sleep( u32 seconds ) {
+  u32 sec, mil;
+  u16 count, previous;
+  sec = 0;
+  mil = 0;
+  previous = getCounter();
+  while( sec < seconds ) {
+    count = getCounter();
+    if ( count >= previous ) {
+      ++mil;
+    }
+    
+    if ( mil >= 100 ) {
+      ++sec;
+      mil = 0;
+    }    
+    previous = count;
+  }
+}
+
 // #define RGB16(red, green, blue) ( ((red >> 3) << 11) | ((green >> 2) << 5) | (blue >> 3))
 
 void lsc_main() {
-    u32 i, j;
-    u32 lbaAddress;
-    u8 * buffer;
-    u8 * image;
-    u32 accumulator;
-    u32 sectors;
+  u8  bool;
+  u32 i, j;
+  u32 lbaAddress;
+  u16  * buffer;
+  char * image;
+  u32 accumulator;
+  u32 sectors;
 
-    BITMAPFILEHEADER * fileHeader;
-    BITMAPINFOHEADER * infoHeader;
-    RGBTRIPLE        * rgbPointer;
-    RGBTRIPLE        * aux;
-
-    sectors = 2813;
-    //u32 sectors = 768;
-    
-    lbaAddress = 2;
-    image  = ( u8 * ) PAGE_FRAME;
-    buffer = ( u8 * ) PAGE_FRAME;
-    
-    while( sectors != 0 ) {
-      if ( sectors <= 255 ) {
-        accumulator = sectors;
-        sectors = 0;
-      } else {
-        accumulator = 255;
-        sectors -= 255;
+  BITMAPFILEHEADER * fileHeader;
+  BITMAPINFOHEADER * infoHeader;
+  RGBTRIPLE        * rgbPointer;
+  RGBTRIPLE        * aux;
+  
+  bool = TRUE;
+  sectors = 1875;
+  lbaAddress = 2;
+  image  = ( char * ) PAGE_FRAME;
+  
+  while( TRUE ) {
+    if ( bool == TRUE ) {
+      buffer = ( u16 *  ) PAGE_FRAME;
+      while( sectors ) {
+        if ( sectors < 127 ) {
+          accumulator = sectors;
+        } else {
+          accumulator = 127;
+        }
+        readSectors( lbaAddress, accumulator, buffer );
+        lbaAddress += accumulator;
+        buffer += accumulator * SECTOR_SIZE;
+        sectors -= accumulator;
       }
-      readSectors( lbaAddress, accumulator, buffer );
-      lbaAddress += accumulator;
-      buffer += accumulator * SECTOR_SIZE * 2;
-    }
-    
-    //readSectors( lbaAddress, 255, buffer );
-
-    SCREEN[300][400].r = 255U;
-    SCREEN[300][400].g = 255U;
-    SCREEN[300][400].b = 255U;
-
-    fileHeader = ( BITMAPFILEHEADER * ) image;
-    infoHeader = ( BITMAPINFOHEADER * ) ( fileHeader + 1 );
-    rgbPointer = ( RGBTRIPLE * ) ( ( ( u8 * ) fileHeader ) + fileHeader->bfOffBits );
-    
-    for ( i = infoHeader->biHeight; i > 0 ; --i ) {
-      for( j = 0; j < infoHeader->biWidth; ++j ) {
-        SCREEN[i-1][j].r = ( rgbPointer->rgbtRed   >> 3 );
-        SCREEN[i-1][j].g = ( rgbPointer->rgbtGreen >> 2 );
-        SCREEN[i-1][j].b = ( rgbPointer->rgbtBlue  >> 3 );
-        ++rgbPointer;
+      
+      fileHeader = ( BITMAPFILEHEADER * ) PAGE_FRAME;
+      infoHeader = ( BITMAPINFOHEADER * ) ( fileHeader + 1 );
+      rgbPointer = ( RGBTRIPLE * ) ( ( ( u8 * ) fileHeader ) + fileHeader->bfOffBits );
+      
+      for ( i = infoHeader->biHeight ; i > 0 ; --i ) {
+        for( j = 0; j < infoHeader->biWidth; ++j ) {
+          SCREEN[i-1][j].r = ( rgbPointer->rgbtRed   >> 3 );
+          SCREEN[i-1][j].g = ( rgbPointer->rgbtGreen >> 2 );
+          SCREEN[i-1][j].b = ( rgbPointer->rgbtBlue  >> 3 );
+          ++rgbPointer;
+        }
+      }   
+      bool = FALSE;
+    } else {
+      for ( i = VGA_WIDTH ; i > 0 ; --i ) {
+        for( j = 0; j < VGA_HEIGHT; ++j ) {
+          SCREEN[i-1][j].r = 0;
+          SCREEN[i-1][j].g = 150;
+          SCREEN[i-1][j].b = 0;
+          ++rgbPointer;      
+        }
       }
+      bool = TRUE;
     }
-    
-//    SCREEN[300][400].r = 255;
-//    SCREEN[300][400].g = 255;
-//    SCREEN[300][400].b = 255;
+    sleep( 5 );
+  }
 }
+
