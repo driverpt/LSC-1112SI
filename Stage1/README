@@ -1,0 +1,7 @@
+For the Image to Work at the moment, you must wreck FreeDOS Partition.
+
+Example:
+
+sudo dd if=«img».bmp of=lsc-hd63-flat.img seek=2 conv=notrunc
+
+We start from Sector 2 so we dont wreck the first block which holds the MBR and VBR for FreeDOS
