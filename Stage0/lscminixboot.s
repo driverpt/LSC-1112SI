@@ -124,7 +124,7 @@ load_mem_indirection:
       jc     PrintError
 
       ## WARNING, TO IMPLEMENT 2nd Indirection, MUST PRESERVE EDI AND EDX
-      movl   $LSC_SYS_INODE  , %edi  
+      movl   $LSC_SYS_INODE  , %edi
       
 load_mem_indirection_zones:
 
@@ -135,9 +135,10 @@ load_mem_indirection_zones:
       call   LoadDap
       
       shll   $1              , %ecx
+      addl   $PARTITION_BASE_ADDR, %ecx
       movl   %ecx            , (dap_lba_address)
       movw   %bx             , (dap_offset)
-      movw   $MEM_BUFFER     , (dap_segment)      
+      movw   $MEM_BUFFER     , (dap_segment)  
       
       addl   $4              , %edi
       addw   $1024           , %bx

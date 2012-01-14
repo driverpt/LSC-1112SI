@@ -1,10 +1,12 @@
 #include "tools_perf_util_types.h"
 #include "arch_x86_boot_vesa.h"
 #include "lsc_io.h"
+#include "bitmap.h"
 #define MAX_MODES     6
 #define COUNTER_0     0x40
 #define TIMER_CTRL    0x43
 #define LFB_BASE_ADDR 0x3FE00000
+#define PAGE_FRAME    0x00200000
 #define VGA_HEIGHT    800
 #define VGA_WIDTH     600
 
@@ -37,7 +39,7 @@ struct vesa_mode_info    * const mode = ( struct vesa_mode_info    * ) ( vesa_mo
 
 extern unsigned char bootdrv;
 
-void clear_screen() {
+/*void clear_screen() {
     unsigned x, y;
     for (y = 0; y < VGA_WIDTH; ++y) {
         for (x = 0; x < VGA_HEIGHT; ++x) {
@@ -58,7 +60,7 @@ void fill_screen( unsigned r, unsigned g, unsigned b ) {
         }
     }  
 }
-
+*/
 char* itoa( int val ){
     static char buf[32];
     int i = 30, j, base = 10;
@@ -71,7 +73,6 @@ char* itoa( int val ){
     tempString[j] = 0;
     return tempString;
 }
-
 
 int strlen( const char * characters ) {
     int count = 0;
@@ -96,6 +97,61 @@ u16 getCounter() {
   return counter;
 }
 
+// #define RGB16(red, green, blue) ( ((red >> 3) << 11) | ((green >> 2) << 5) | (blue >> 3))
+
 void lsc_main() {
-    fill_screen( 0, 255, 0 );
+    u32 i, j;
+    u32 lbaAddress;
+    u8 * buffer;
+    u8 * image;
+    u32 accumulator;
+    u32 sectors;
+
+    BITMAPFILEHEADER * fileHeader;
+    BITMAPINFOHEADER * infoHeader;
+    RGBTRIPLE        * rgbPointer;
+    RGBTRIPLE        * aux;
+
+    sectors = 2813;
+    //u32 sectors = 768;
+    
+    lbaAddress = 2;
+    image  = ( u8 * ) PAGE_FRAME;
+    buffer = ( u8 * ) PAGE_FRAME;
+    
+    while( sectors != 0 ) {
+      if ( sectors <= 255 ) {
+        accumulator = sectors;
+        sectors = 0;
+      } else {
+        accumulator = 255;
+        sectors -= 255;
+      }
+      readSectors( lbaAddress, accumulator, buffer );
+      lbaAddress += accumulator;
+      buffer += accumulator * SECTOR_SIZE * 2;
+    }
+    
+    //readSectors( lbaAddress, 255, buffer );
+
+    SCREEN[300][400].r = 255U;
+    SCREEN[300][400].g = 255U;
+    SCREEN[300][400].b = 255U;
+
+    fileHeader = ( BITMAPFILEHEADER * ) image;
+    infoHeader = ( BITMAPINFOHEADER * ) ( fileHeader + 1 );
+    rgbPointer = ( RGBTRIPLE * ) ( ( ( u8 * ) fileHeader ) + fileHeader->bfOffBits );
+    
+    for ( i = infoHeader->biHeight; i > 0 ; --i ) {
+      for( j = 0; j < infoHeader->biWidth; ++j ) {
+        SCREEN[i-1][j].r = ( rgbPointer->rgbtRed   >> 3 );
+        SCREEN[i-1][j].g = ( rgbPointer->rgbtGreen >> 2 );
+        SCREEN[i-1][j].b = ( rgbPointer->rgbtBlue  >> 3 );
+        ++rgbPointer;
+      }
+    }
+    
+//    SCREEN[300][400].r = 255;
+//    SCREEN[300][400].g = 255;
+//    SCREEN[300][400].b = 255;
 }

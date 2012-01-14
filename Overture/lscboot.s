@@ -38,10 +38,6 @@ convert_coordinates:
     addw 0xB800, %cx
     pop  bp
     ret
-    
-
-    
-
 
 stop:
     hlt

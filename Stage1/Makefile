@@ -9,14 +9,17 @@ bootrec: bootrec.o
 bootrec.o: bootrec.s
 	as -o bootrec.o bootrec.s
 
-lsc.sys: start16.o start64.o prog.o
-	ld -T lsc64.ld -o lsc.sys start16.o start64.o prog.o
+lsc.sys: start16.o start64.o lsc_io.o prog.o
+	ld -T lsc64.ld -o lsc.sys start16.o start64.o lsc_io.o prog.o
 
 start16.o: start16.s
 	as --64 -o start16.o start16.s
 
 start64.o: start64.s
 	as --64 -o start64.o start64.s
+
+lsc_io.o: lsc_io.c
+	gcc -m64 -ffreestanding -mno-red-zone -c -o lsc_io.o lsc_io.c
 
 prog.o: prog.c
 	gcc -m64 -ffreestanding -mno-red-zone -c -o prog.o prog.c
