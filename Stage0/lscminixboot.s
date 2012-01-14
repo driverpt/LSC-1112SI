@@ -9,6 +9,7 @@
 .equ PARTITION_BASE_ADDR, 43344
 .equ BASE_DIR_LBA       , 45150
 .equ INODE_LBA_START    , 43364
+.equ INODES_IN_A_BLOCK  , 16
 
 .text                         # code section starts here
 .code16                       # this is real mode (16 bit) code
@@ -31,7 +32,7 @@ main_prog:
       movb  $0x42       , %ah
       movb  driveid     , %dl
       int   $0x13
-      jc    PrintError
+   #   jc    PrintError
       #movw  $msgb       , %si
       #call  PrintInfo
       movw  $ROOT_DIR   , %di
@@ -53,19 +54,16 @@ ReadDirectory:
       orw    %ax, %ax
       jnz    ReadDirectoryNextEntry
 # String Found, we can now override all registers
+      
       subw   $0x02           , %dx
       movw   %dx             , %di
       movw   (%di)           , %bx
       
-      movw   $dap            , %si
-      movb   $0x42           , %ah
-      movb   (driveid)       , %dl
-      movb   $16             , (dap)
-      movb   $0              , (dap_reserved)
-      movw   $2              , (dap_sectors)
+      call   LoadDap
+      
       movw   $LSC_SYS_INODE  , (dap_offset)
       movw   $0              , (dap_segment)
-      movl   $0              , (dap_lba_address+4)
+      #movl   $0              , (dap_lba_address+4)
       movl   $INODE_LBA_START, (dap_lba_address)
       int    $0x13
       jc     PrintError
@@ -75,42 +73,77 @@ ReadDirectory:
       movw   $LSC_SYS_INODE  , %si
       movw   %bx             , %cx
 set_inode:
-      orw    %cx             , %cx
+      decw   %cx
       jz     set_inode_done
       addw   $0x40           , %si
-      decw   %cx
       jmp    set_inode
 set_inode_done:
       movw   $inode          , %di
       movw   $64             , %cx
       cld
       rep movsb
-      xorl   %esi            , %esi
-      movw   $i_zone1        , %si
-      xorl   %ecx            , %ecx
-      movl   $8              , %ecx
-      xorl   %ebx            , %ebx
-      movw   $0              , %bx
+      xorl   %edi            , %edi
+      movw   $i_zone0        , %di
+      movl   $7              , %ecx
+      xorw   %bx             , %bx
+      #xorw   %dx             , %dx
 load_mem:
-      movl   (%esi)          , %eax
+      movl   (%edi)          , %eax
       orl    %eax            , %eax
       jz     jump_mem
       
       shll   $1              , %eax
       addl   $PARTITION_BASE_ADDR, %eax
       
-      movb   $16             , (dap)
-      movb   $0              , (dap_reserved)
-      movw   %bx             , (dap_offset)
-      movw   $0x1            , (dap_segment)
-      movl   $0              , (dap_lba_address+4)
+      
       movl   %eax            , (dap_lba_address)
+      movw   %bx             , (dap_offset)
+      movw   $MEM_BUFFER     , (dap_segment)
+      
+      call   LoadDap
+      
       int    $0x13     
       jc     PrintError
-      addl   $4              , %esi
-      addw   $512            , %bx
+      addl   $4              , %edi
+      addw   $1024           , %bx
       decw   %cx
       jnz    load_mem
+      
+load_mem_indirection:
+      movl   (%edi)          , %ecx
+      orl    %ecx            , %ecx
+      jz     jump_mem
+      
+      call   LoadDap
+      movw   $LSC_SYS_INODE  , (dap_offset)
+      movw   $0              , (dap_segment)
+      shll   $1              , %ecx
+      addl   $PARTITION_BASE_ADDR, %ecx
+      movl   %ecx            , (dap_lba_address)
+      int    $0x13
+      jc     PrintError
+
+      ## WARNING, TO IMPLEMENT 2nd Indirection, MUST PRESERVE EDI AND EDX
+      movl   $LSC_SYS_INODE  , %edi  
+      
+load_mem_indirection_zones:
+
+      movl   (%edi)          , %ecx
+      orl    %ecx            , %ecx
+      jz     jump_mem
+      
+      call   LoadDap
+      
+      shll   $1              , %ecx
+      movl   %ecx            , (dap_lba_address)
+      movw   %bx             , (dap_offset)
+      movw   $MEM_BUFFER     , (dap_segment)      
+      
+      addl   $4              , %edi
+      addw   $1024           , %bx
+      
+      jmp    load_mem_indirection_zones
+      
 jump_mem:
       movw   $0x10, %ax
       movw   %ax  , %ds
@@ -133,10 +166,8 @@ ReadDirectoryNextEntry:
       jmp    stop
        
 PrintError:
-      pushw  %si
       movw   $msgerror, %si
       call   PrintInfo
-      popw   %si
       jmp    stop
 
 PrintInfo:
@@ -161,6 +192,14 @@ StringFound:
       xorw   %ax           , %ax
       jmp    FunctionComplete
   
+LoadDap:
+      movw   $dap      , %si
+      movb   $0x42     , %ah
+      movb   (driveid) , %dl
+      movb   $16       , (dap)
+      movb   $0        , (dap_reserved)
+      movb   $2        , (dap_sectors)
+
 FunctionComplete:
       ret
 
@@ -169,20 +208,20 @@ stop:
     jmp stop
 
 .section .rodata                  # program constants (no real protection)
-msgb:       .ascii "Starting LSC..."
-            .byte  13, 10, 0
+#msgb:       .ascii "Starting LSC..."
+#            .byte  13, 10, 0
             
-msgerror:   .ascii "Error while loading LSC..."
-            .byte  13, 10, 0
+msgerror:   .ascii "Error"# while loading LSC..."
+            .byte 0
+#            .byte  13, 10, 0
 
 msgnotfound:  .ascii "LSC.SYS Not Found"
-              .byte  13, 10, 0    
+              .byte 0
+#              .byte  13, 10, 0    
 
-#msgloaded:  .ascii "LSC.SYS Found"
-#            .byte  13, 10, 0              
-
-msgloadingsys:  .ascii "Loading lsc.sys"
-                .byte  13, 10, 0              
+msgloadingsys:  .ascii "Loading"# lsc.sys"
+                .byte 0
+#                .byte  13, 10, 0              
 
 lscsysfilename:  .ascii "lsc.sys"
                  .byte  0
@@ -191,8 +230,8 @@ lscsysfilename:  .ascii "lsc.sys"
 .data                             # program variables (probably not needed)
 driveid:
       .byte  0
-lsc:
-      .long  2011
+#lsc:
+#      .long  2011
 dap:
       .byte  16
 dap_reserved:
@@ -227,6 +266,7 @@ inode:
     i_atime:    .long  0
     i_mtime:    .long  0
     i_ctime:    .long  0
+    i_zone0:    .long  0
     i_zone1:    .long  0
     i_zone2:    .long  0
     i_zone3:    .long  0
@@ -234,8 +274,7 @@ inode:
     i_zone5:    .long  0
     i_zone6:    .long  0
     i_zone7:    .long  0
-#    i_zone8:    .long  0
+#    i_zone8:    .long  0    
 #    i_zone9:    .long  0
-#    i_zone10:   .long  0
     
 .end
