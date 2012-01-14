@@ -28,14 +28,8 @@ sti                           # interrupts enabled after initializing
 
 # ... prog ...                # main program body.../
 main_prog:
-      movw  $dap        , %si
-      movb  $0x42       , %ah
-      movb  driveid     , %dl
-      int   $0x13
-   #   jc    PrintError
-      #movw  $msgb       , %si
-      #call  PrintInfo
-      movw  $ROOT_DIR   , %di
+      call   LoadDap
+      movw   $ROOT_DIR   , %di
 
 ReadDirectoryInit:  
       movw   $20  , %cx
@@ -54,39 +48,31 @@ ReadDirectory:
       orw    %ax, %ax
       jnz    ReadDirectoryNextEntry
 # String Found, we can now override all registers
-      
-      subw   $0x02           , %dx
-      movw   %dx             , %di
+      movw   %bx             , %di
       movw   (%di)           , %bx
-      
-      call   LoadDap
-      
+            
       movw   $LSC_SYS_INODE  , (dap_offset)
       movw   $0              , (dap_segment)
-      #movl   $0              , (dap_lba_address+4)
       movl   $INODE_LBA_START, (dap_lba_address)
-      int    $0x13
-      jc     PrintError
-      #movw   $msgloaded      , %si
-      #call   PrintInfo
-      xorl   %esi            , %esi
+      
+      call   LoadDap
       movw   $LSC_SYS_INODE  , %si
-      movw   %bx             , %cx
 set_inode:
-      decw   %cx
+      decw   %bx
       jz     set_inode_done
       addw   $0x40           , %si
       jmp    set_inode
+# Move the INode into the temporary Structure the bottom of this code
 set_inode_done:
+      movw   %bx             , %cx
       movw   $inode          , %di
       movw   $64             , %cx
       cld
       rep movsb
-      xorl   %edi            , %edi
-      movw   $i_zone0        , %di
-      movl   $7              , %ecx
-      xorw   %bx             , %bx
-      #xorw   %dx             , %dx
+      movl   $i_zone0        , %edi   # Set the EDI Pointer to the top of the structure
+      movw   $7              , %cx   # We will read 7 Inodes, which will be the Direct ones
+      xorw   %bx             , %bx    # Lets clear BX that will work as our offset to control memory fill
+# This Label will start reading the INode into memory
 load_mem:
       movl   (%edi)          , %eax
       orl    %eax            , %eax
@@ -94,18 +80,14 @@ load_mem:
       
       shll   $1              , %eax
       addl   $PARTITION_BASE_ADDR, %eax
-      
-      
       movl   %eax            , (dap_lba_address)
       movw   %bx             , (dap_offset)
       movw   $MEM_BUFFER     , (dap_segment)
       
       call   LoadDap
       
-      int    $0x13     
-      jc     PrintError
-      addl   $4              , %edi
-      addw   $1024           , %bx
+      addw   $4              , %di     # Set EDI to point to the next 4byte pointer
+      addw   $1024           , %bx     # Set the Offset to the next Block
       decw   %cx
       jnz    load_mem
       
@@ -114,17 +96,15 @@ load_mem_indirection:
       orl    %ecx            , %ecx
       jz     jump_mem
       
-      call   LoadDap
       movw   $LSC_SYS_INODE  , (dap_offset)
       movw   $0              , (dap_segment)
       shll   $1              , %ecx
       addl   $PARTITION_BASE_ADDR, %ecx
       movl   %ecx            , (dap_lba_address)
-      int    $0x13
-      jc     PrintError
+      call   LoadDap
 
       ## WARNING, TO IMPLEMENT 2nd Indirection, MUST PRESERVE EDI AND EDX
-      movl   $LSC_SYS_INODE  , %edi  
+      movl   $LSC_SYS_INODE  , %edi
       
 load_mem_indirection_zones:
 
@@ -132,14 +112,14 @@ load_mem_indirection_zones:
       orl    %ecx            , %ecx
       jz     jump_mem
       
-      call   LoadDap
-      
       shll   $1              , %ecx
+      addl   $PARTITION_BASE_ADDR, %ecx
       movl   %ecx            , (dap_lba_address)
       movw   %bx             , (dap_offset)
-      movw   $MEM_BUFFER     , (dap_segment)      
+      movw   $MEM_BUFFER     , (dap_segment)  
+      call   LoadDap
       
-      addl   $4              , %edi
+      addw   $4              , %di
       addw   $1024           , %bx
       
       jmp    load_mem_indirection_zones
@@ -152,11 +132,9 @@ jump_mem:
       movw   %ax  , %gs
       movw   %ax  , %ss
       
-      ljmp $MEM_BUFFER, $0
+      ljmp   $MEM_BUFFER, $0
 
 ReadDirectoryNextEntry:
-#      movw   %dx  , %si
-#      call   PrintInfo
       movw   %bx  , %di
       addw   $0x20, %di
       decw   %cx
@@ -183,45 +161,49 @@ StringCompare:
       cld
       repe   cmpsb
       je     StringFound
-      movw   $99, %ax
+      orw    $0xFF, %ax
       jmp    FunctionComplete
 
 StringFound:
-      movw   $msgloadingsys, %si
+      movw   $msgb, %si
       call   PrintInfo
       xorw   %ax           , %ax
       jmp    FunctionComplete
   
 LoadDap:
+      pushl  %esi
+      pushl  %eax
+      pushl  %edx
+      
       movw   $dap      , %si
       movb   $0x42     , %ah
       movb   (driveid) , %dl
       movb   $16       , (dap)
       movb   $0        , (dap_reserved)
       movb   $2        , (dap_sectors)
-
+      int    $0x13
+      jc     PrintError      
+      
+      popl   %edx
+      popl   %eax
+      popl   %esi
+      
 FunctionComplete:
       ret
 
 stop:
-    hlt
-    jmp stop
+      hlt
+      jmp stop
 
 .section .rodata                  # program constants (no real protection)
-#msgb:       .ascii "Starting LSC..."
-#            .byte  13, 10, 0
+msgb:            .ascii "Starting LSC..."
+                 .byte  13, 10, 0
             
-msgerror:   .ascii "Error"# while loading LSC..."
-            .byte 0
-#            .byte  13, 10, 0
+msgerror:        .ascii "Error"
+                 .byte 0
 
-msgnotfound:  .ascii "LSC.SYS Not Found"
-              .byte 0
-#              .byte  13, 10, 0    
-
-msgloadingsys:  .ascii "Loading"# lsc.sys"
-                .byte 0
-#                .byte  13, 10, 0              
+msgnotfound:     .ascii "LSC.SYS Not Found"
+                 .byte  0    
 
 lscsysfilename:  .ascii "lsc.sys"
                  .byte  0
@@ -230,8 +212,6 @@ lscsysfilename:  .ascii "lsc.sys"
 .data                             # program variables (probably not needed)
 driveid:
       .byte  0
-#lsc:
-#      .long  2011
 dap:
       .byte  16
 dap_reserved:
@@ -243,7 +223,9 @@ dap_offset:
 dap_segment:
       .word  0
 dap_lba_address:
-      .quad  BASE_DIR_LBA
+      .long  BASE_DIR_LBA
+dap_lba_address_high:
+      .long  0
 
 #superblock:
 #    s_ninodes:       .word 0
@@ -274,7 +256,7 @@ inode:
     i_zone5:    .long  0
     i_zone6:    .long  0
     i_zone7:    .long  0
-#    i_zone8:    .long  0    
+#    i_zone8:    .long  0    # These ones will be deactivated, not supported for now
 #    i_zone9:    .long  0
     
 .end
