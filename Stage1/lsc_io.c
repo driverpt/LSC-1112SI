@@ -36,7 +36,7 @@ int readSectors( u32 base, u32 n, void * dest ) {
       return -1;
     }
     
-    rep_insw( ATA_DATA_REGISTER, dest, SECTOR_SIZE );
+    rep_insw( ATA_DATA_REGISTER, dest, SECTOR_SIZE / 2 );
     ++sectors_read;
     dest = ( char * ) dest + SECTOR_SIZE;
   }

@@ -115,7 +115,7 @@ void lsc_main() {
   RGBTRIPLE        * aux;
   
   bool = TRUE;
-  sectors = 1875;
+  sectors = 2813;
   lbaAddress = 2;
   image  = ( char * ) PAGE_FRAME;
   

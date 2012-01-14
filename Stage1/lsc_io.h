@@ -4,7 +4,7 @@
 #define MASTER_DRIVE                  (0<<4)
 #define SLAVE_DRIVE                   (1<<4)
 
-#define SECTOR_SIZE                   256
+#define SECTOR_SIZE                   512
 
 #define ERR                           0x01
 #define DRQ                           0x08
