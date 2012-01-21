@@ -104,7 +104,7 @@ void lsc_main() {
   u8  bool;
   u32 i, j;
   u32 lbaAddress;
-  u16  * buffer;
+  char * buffer;
   char * image;
   u32 accumulator;
   u32 sectors;
@@ -121,7 +121,7 @@ void lsc_main() {
   
   while( TRUE ) {
     if ( bool == TRUE ) {
-      buffer = ( u16 *  ) PAGE_FRAME;
+      buffer = ( char *  ) PAGE_FRAME;
       while( sectors ) {
         if ( sectors < 127 ) {
           accumulator = sectors;
