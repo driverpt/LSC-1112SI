@@ -55,12 +55,6 @@ char* itoa( int val ){
     return tempString;
 }
 
-int strlen( const char * characters ) {
-    int count = 0;
-    for( ; characters[count] != 0; ++count );
-    return count;
-}
-
 u16 getCounter() {
   u8  lower;
   u8  higher;

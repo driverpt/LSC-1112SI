@@ -5,6 +5,10 @@
 #define SLAVE_DRIVE                   (1<<4)
 
 #define SECTOR_SIZE                   512
+#define BLOCK_SIZE                    1024
+#define ZONE_SIZE                     BLOCK_SIZE
+#define INODE_SIZE                    64
+#define INODES_PER_ZONE               ( ZONE_SIZE / INODE_SIZE )
 
 #define ERR                           0x01
 #define DRQ                           0x08
@@ -12,6 +16,7 @@
 #define RDY                           0x40
 #define BSY                           0x80
 
+#define BASE_LBA_PARTITION_ADDRESS    43435
 
 #define ATA_DATA_REGISTER             0x01F0
 #define ATA_ERROR_FEATURES_REGISTER   0x01F1
@@ -47,5 +52,8 @@ static inline void rep_insw( u16 port, void * dest, u32 n ) {
     : "d"(port) , "D"(dest), "c"(n)
     );
 }
+int strlen( const char * characters );
 
 int readSectors( u32 base, u32 n, void * dest );
+
+int readFile( const char * filename, void * dest );
