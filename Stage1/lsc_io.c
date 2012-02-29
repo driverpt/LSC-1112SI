@@ -97,57 +97,42 @@ void readINode( minix2_inode * inode, u32 number, u32 lbaBaseInode ) {
 int readOneIndirection( u32 lbaStartZone, void * dest ) {
   u32[ZONE_SIZE/sizeof(u32)] indirectionLevel;
   u32 i, zonesRead = 0;
-  readSectors( lbaStartZone, ( BLOCK_SIZE / SECTOR_SIZE ), indirectionLevel );
+  readZone( lbaStartZone, indirectionLevel );
   for(i=0; i<(ZONE_SIZE/sizeof(u32)); ++i) {
     if( indirectionLevel[i] == 0 ) {
       return zonesRead;
     }
     dest = ( ( char * ) dest ) + readZone( BASE_LBA_PARTITION_ADDRESS + indirectionLevel[i], dest ) * SECTOR_SIZE;
+    ++zonesRead;
   }
 }
 
 int readTwoIndirection( u32 lbaStartZone, void * dest ) {
   u32[ZONE_SIZE/sizeof(u32)] indirectionLevelOne;
   u32[ZONE_SIZE/sizeof(u32)] indirectionLevelTwo;
-  u32 i, j, zonesRead = 0;
+  u32 i, tempZonesRead = 0, zonesRead = 0;
   readZone( lbaStartZone, indirectionLevelOne );
   for(i=0; i<(ZONE_SIZE/sizeof(u32)); ++i) {
     if( indirectionLevelOne[i] == 0 ) {
       return zonesRead;
     }
-    readZone( lbaStartZone, indirectionLevelTwo );
-    for(j=0; j<(ZONE_SIZE/sizeof(u32)); ++j) {
-      dest = ( ( char * ) dest ) + readZone( BASE_LBA_PARTITION_ADDRESS + indirectionLevel[i], dest ) * SECTOR_SIZE;
-      ++zonesRead;
-    }
+    tempZonesRead = readOneIndirection( indirectionLevelOne[i] + BASE_LBA_PARTITION_ADDRESS, dest );
+    dest = ( (char * ) dest ) + tempZonesRead;
+    zonesRead += tempZonesRead;
   }
 }
 
 int readThreeIndirection( u32 lbaStartZone, void * dest ) {
   u32[ZONE_SIZE/sizeof(u32)] indirectionLevelOne;
-  u32[ZONE_SIZE/sizeof(u32)] indirectionLevelTwo;
-  u32[ZONE_SIZE/sizeof(u32)] indirectionLevelThree;
-  u32 i, j, k, zonesRead = 0;
+  u32 i, tempZonesRead = 0, zonesRead = 0;
   readZone( lbaStartZone, indirectionLevelOne );
   for(i=0; i<(ZONE_SIZE/sizeof(u32)); ++i) {
     if( indirectionLevelOne[i] == 0 ) {
       return zonesRead;
     }
-    readZone( lbaStartZone, indirectionLevelTwo );
-    for(j=0; j<(ZONE_SIZE/sizeof(u32)); ++j) {
-    
-      if( indirectionLevelTwo[i] == 0 ) {
-        return zonesRead;
-      }
-      
-      for(k=0; k<(ZONE_SIZE/sizeof(u32)); ++k) {
-        if( indirectionLevelThree[i] == 0 ) {
-          return zonesRead;
-        }
-        dest = ( ( char * ) dest ) + readZone( BASE_LBA_PARTITION_ADDRESS + indirectionLevelThree[i], dest ) * SECTOR_SIZE;
-        ++zonesRead;
-      }
-    }
+    tempZonesRead = readTwoIndirection( indirectionLevelOne[i] + BASE_LBA_PARTITION_ADDRESS, dest ) * ZONE_SIZE;
+    dest = ( (char * ) dest ) + tempZonesRead;
+    zonesRead += tempZonesRead;
   }  
 }
 
