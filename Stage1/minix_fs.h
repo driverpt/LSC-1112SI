@@ -19,13 +19,13 @@
 #define MINIX_VALID_FS		0x0001		/* Clean fs. */
 #define MINIX_ERROR_FS		0x0002		/* fs has errors. */
 
-#define MINIX_INODES_PER_BLOCK ((BLOCK_SIZE)/(sizeof (struct minix2_inode)))
+#define MINIX_INODES_PER_BLOCK (BLOCK_SIZE/INODE_SIZE)
 
 /*
  * This is the original minix inode layout on disk.
  * Note the 8-bit gid and atime and ctime.
  */
-struct minix_inode {
+typedef struct minix_inode {
 	u16 i_mode;
 	u16 i_uid;
 	u32 i_size;
@@ -33,7 +33,7 @@ struct minix_inode {
 	u8  i_gid;
 	u8  i_nlinks;
 	u16 i_zone[9];
-} __attribute__((packed));
+} __attribute__((packed)) minix_inode;
 
 /*
  * The new minix inode has all the time entries, as well as
@@ -41,7 +41,7 @@ struct minix_inode {
  * instead of 7+1+1). Also, some previously 8-bit values are
  * now 16-bit. The inode is now 64 bytes instead of 32.
  */
-struct minix2_inode {
+typedef struct minix2_inode {
 	u16 i_mode;
 	u16 i_nlinks;
 	u16 i_uid;
@@ -51,12 +51,12 @@ struct minix2_inode {
 	u32 i_mtime;
 	u32 i_ctime;
 	u32 i_zone[10];
-} __attribute__((packed));
+} __attribute__((packed)) minix2_inode;
 
 /*
  * minix super-block data on disk
  */
-struct minix_super_block {
+typedef struct minix_super_block {
 	u16 s_ninodes;
 	u16 s_nzones;
 	u16 s_imap_blocks;
@@ -67,7 +67,7 @@ struct minix_super_block {
 	u16 s_magic;
 	u16 s_state;
 	u32 s_zones;
-} __attribute__((packed));
+} __attribute__((packed)) minix_super_block;
 
 /*
  * V3 minix super-block data on disk
@@ -86,14 +86,14 @@ struct minix3_super_block {
 	u16 s_pad2;
 	u16 s_blocksize;
 	u8  s_disk_version;
-} __attribute__((packed));
+} __attribute__((packed)) minix3_super_block;
 
-struct minix_dir_entry {
+typedef struct minix_dir_entry {
 	u16 inode;
 	char name[0];
-} __attribute__((packed));
+} __attribute__((packed)) minix_dir_entry;
 
-struct minix3_dir_entry {
+typedef struct minix3_dir_entry {
 	u32 inode;
 	char name[0];
-} __attribute__((packed));
+} __attribute__((packed)) minix3_dir_entry;

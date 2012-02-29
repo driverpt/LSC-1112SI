@@ -102,20 +102,22 @@ void lsc_main() {
   char * image;
   u32 accumulator;
   u32 sectors;
-
+  
   BITMAPFILEHEADER * fileHeader;
   BITMAPINFOHEADER * infoHeader;
   RGBTRIPLE        * rgbPointer;
   RGBTRIPLE        * aux;
   
+  readFile( "img5775a.bmp\0", (void *) PAGE_FRAME );
+  
   bool = TRUE;
-  sectors = 2813;
-  lbaAddress = 2;
-  image  = ( char * ) PAGE_FRAME;
+  //sectors = 2813;
+  //lbaAddress = 2;
+  //image  = ( char * ) PAGE_FRAME;
   
   while( TRUE ) {
     if ( bool == TRUE ) {
-      buffer = ( char *  ) PAGE_FRAME;
+      /*buffer = ( char *  ) PAGE_FRAME;
       while( sectors ) {
         if ( sectors < 127 ) {
           accumulator = sectors;
@@ -126,7 +128,7 @@ void lsc_main() {
         lbaAddress += accumulator;
         buffer += accumulator * SECTOR_SIZE;
         sectors -= accumulator;
-      }
+      }*/
       
       fileHeader = ( BITMAPFILEHEADER * ) PAGE_FRAME;
       infoHeader = ( BITMAPINFOHEADER * ) ( fileHeader + 1 );

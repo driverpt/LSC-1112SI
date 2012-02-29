@@ -1,5 +1,4 @@
 #include "lsc_io.h"
-#include "minix_fs.h"
 
 int strlen( const char * characters ) {
     int count = 0;
@@ -66,96 +65,114 @@ int readZone( u32 base, void * dest ) {
 }
 
 void readSuperBlock( minix_super_block * superblock ) {
-  readSectors( BASE_LBA_PARTITION_ADDRESS + 1, 2, superblock );
+  char sb[BLOCK_SIZE];
+  minix_super_block * retrieved;
+  readSectors( BASE_LBA_PARTITION_ADDRESS + 1, 2, sb );
+  retrieved = (minix_super_block *) sb;
+  
+  superblock->s_ninodes       = retrieved->s_ninodes;
+  superblock->s_nzones        = retrieved->s_nzones;
+  superblock->s_imap_blocks   = retrieved->s_imap_blocks;
+  superblock->s_zmap_blocks   = retrieved->s_zmap_blocks;
+  superblock->s_firstdatazone = retrieved->s_firstdatazone;
+  superblock->s_log_zone_size = retrieved->s_log_zone_size;
+  superblock->s_max_size      = retrieved->s_max_size;
+  superblock->s_magic         = retrieved->s_magic;
+  superblock->s_state         = retrieved->s_state;
+  superblock->s_zones         = retrieved->s_zones;
+  
 }
 
 void readINode( minix2_inode * inode, u32 number, u32 lbaBaseInode ) {
   u32 sectorReadOffset;
   u32 sectorInodeOffset;
   u8  i;
-  minix2_inode[INODES_PER_ZONE] inodes;
+  minix2_inode inodes[INODES_PER_ZONE];
   
   sectorReadOffset  = number / INODES_PER_ZONE;
   sectorInodeOffset = number % INODES_PER_ZONE;
   
   readSectors( lbaBaseInode + sectorReadOffset, 1, inodes );
   
-  inode->i_mode   = inodes[sectorInodeOffset]->i_mode;
-  inode->i_nlinks = inodes[sectorInodeOffset]->i_nlinks;
-  inode->i_uid    = inodes[sectorInodeOffset]->i_uid;
-  inode->i_gid    = inodes[sectorInodeOffset]->i_gid;
-  inode->i_size   = inodes[sectorInodeOffset]->i_size;
-  inode->i_atime  = inodes[sectorInodeOffset]->i_atime;
-  inode->i_mtime  = inodes[sectorInodeOffset]->i_mtime;
-  inode->i_ctime  = inodes[sectorInodeOffset]->i_ctime;
+  inode->i_mode   = inodes[sectorInodeOffset].i_mode;
+  inode->i_nlinks = inodes[sectorInodeOffset].i_nlinks;
+  inode->i_uid    = inodes[sectorInodeOffset].i_uid;
+  inode->i_gid    = inodes[sectorInodeOffset].i_gid;
+  inode->i_size   = inodes[sectorInodeOffset].i_size;
+  inode->i_atime  = inodes[sectorInodeOffset].i_atime;
+  inode->i_mtime  = inodes[sectorInodeOffset].i_mtime;
+  inode->i_ctime  = inodes[sectorInodeOffset].i_ctime;
   
   for( i=0; i<10; ++i ) {
-    inode->i_zone[i] = inodes[sectorInodeOffset]->i_zone[i];
+    inode->i_zone[i] = inodes[sectorInodeOffset].i_zone[i];
   }
 }
 
 int readOneIndirection( u32 lbaStartZone, void * dest ) {
-  u32[ZONE_SIZE/sizeof(u32)] indirectionLevel;
+  u32 indirectionLevel[ZONE_SIZE/4];
   u32 i, zonesRead = 0;
   readZone( lbaStartZone, indirectionLevel );
-  for(i=0; i<(ZONE_SIZE/sizeof(u32)); ++i) {
+  for(i=0; i<(ZONE_SIZE/4); ++i) {
     if( indirectionLevel[i] == 0 ) {
-      return zonesRead;
+      break;
     }
     dest = ( ( char * ) dest ) + readZone( BASE_LBA_PARTITION_ADDRESS + indirectionLevel[i], dest ) * SECTOR_SIZE;
     ++zonesRead;
   }
+  return zonesRead * ( BLOCK_SIZE/SECTOR_SIZE );
 }
 
 int readTwoIndirection( u32 lbaStartZone, void * dest ) {
-  u32[ZONE_SIZE/sizeof(u32)] indirectionLevelOne;
-  u32[ZONE_SIZE/sizeof(u32)] indirectionLevelTwo;
+  u32 indirectionLevelOne[ZONE_SIZE/4];
   u32 i, tempZonesRead = 0, zonesRead = 0;
   readZone( lbaStartZone, indirectionLevelOne );
-  for(i=0; i<(ZONE_SIZE/sizeof(u32)); ++i) {
+  for(i=0; i<(ZONE_SIZE/4); ++i) {
     if( indirectionLevelOne[i] == 0 ) {
-      return zonesRead;
+      break;
     }
     tempZonesRead = readOneIndirection( indirectionLevelOne[i] + BASE_LBA_PARTITION_ADDRESS, dest );
     dest = ( (char * ) dest ) + tempZonesRead;
     zonesRead += tempZonesRead;
   }
+  return zonesRead * ( BLOCK_SIZE/SECTOR_SIZE );
 }
 
 int readThreeIndirection( u32 lbaStartZone, void * dest ) {
-  u32[ZONE_SIZE/sizeof(u32)] indirectionLevelOne;
+  u32 indirectionLevelOne[ZONE_SIZE/4];
   u32 i, tempZonesRead = 0, zonesRead = 0;
   readZone( lbaStartZone, indirectionLevelOne );
-  for(i=0; i<(ZONE_SIZE/sizeof(u32)); ++i) {
+  for(i=0; i<(ZONE_SIZE/4); ++i) {
     if( indirectionLevelOne[i] == 0 ) {
-      return zonesRead;
+      break;
     }
     tempZonesRead = readTwoIndirection( indirectionLevelOne[i] + BASE_LBA_PARTITION_ADDRESS, dest ) * ZONE_SIZE;
     dest = ( (char * ) dest ) + tempZonesRead;
     zonesRead += tempZonesRead;
-  }  
+  }
+  return zonesRead * ( BLOCK_SIZE/SECTOR_SIZE );
 }
 
 int readFile( const char * filename, void * dest ) {
   u32 inodebaseLBAAddress, i,j;
   minix_super_block superblock;
-  minix_dir_entry[50] rootDirData;
+  minix_dir_entry rootDirData[50];
   minix2_inode rootDir;
   minix2_inode file;
-  readSuperBlock( minix_super_block );
-  inodebaseLBAAddress = BASE_LBA_PARTITION_ADDRESS + ( s_imap_blocks + s_zmap_blocks + 1 ) * ( BLOCK_SIZE / SECTOR_SIZE )
+  char * destination = ( char * ) dest;
+  readSuperBlock( &superblock );
+  inodebaseLBAAddress = BASE_LBA_PARTITION_ADDRESS + ( superblock.s_imap_blocks + superblock.s_zmap_blocks + 1 ) * ( BLOCK_SIZE / SECTOR_SIZE );
   readINode( &rootDir, 0, inodebaseLBAAddress );
   // TODO: Read Directory Entries
-  readSectors( rootDir->i_zone[0], ( BLOCK_SIZE / SECTOR_SIZE ), rootDirData );
+  readSectors( rootDir.i_zone[0], ( BLOCK_SIZE / SECTOR_SIZE ), rootDirData );
   for(i=0; i<50; ++i) {
-    if (strcmp(filename, rootDirData->name) == 0) {
-      dest = ( ( char * ) dest ) + readINode(file, rootDirData->inode, inodebaseLBAAddress) * SECTOR_SIZE;
+    if (strcmp(filename, rootDirData->name) == 0 ) {
+      readINode(&file, rootDirData->inode, inodebaseLBAAddress);
       for(j=0; j<7; ++j) {
-        readSectors( file->i_zone[j] + BASE_LBA_PARTITION_ADDRESS, ( BLOCK_SIZE / SECTOR_SIZE ), dest
+        destination += readZone( file.i_zone[j] + BASE_LBA_PARTITION_ADDRESS, destination ) * SECTOR_SIZE;
       }
-      readOneIndirection  ( file->i_zone[j++] + BASE_LBA_PARTITION_ADDRESS, dest );
-      readTwoIndirection  ( file->i_zone[j++] + BASE_LBA_PARTITION_ADDRESS, dest );
-      readThreeIndirection( file->i_zone[j++] + BASE_LBA_PARTITION_ADDRESS, dest );
+      destination += readOneIndirection  ( file.i_zone[j++] + BASE_LBA_PARTITION_ADDRESS, destination );
+      destination += readTwoIndirection  ( file.i_zone[j++] + BASE_LBA_PARTITION_ADDRESS, destination );
+      destination += readThreeIndirection( file.i_zone[j++] + BASE_LBA_PARTITION_ADDRESS, destination );
       return 0;
     }
   }

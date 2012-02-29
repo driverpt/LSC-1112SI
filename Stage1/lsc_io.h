@@ -1,5 +1,6 @@
 #pragma once
 #include "tools_perf_util_types.h"
+#include "minix_fs.h"
 
 #define MASTER_DRIVE                  (0<<4)
 #define SLAVE_DRIVE                   (1<<4)
